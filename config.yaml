@@ -20,7 +20,7 @@ topics:
 output:
   save_to_file: true
   file_dir: "./daily_briefings"
-  send_email: True # TODO: Change to true and set up email configuration
+  send_email: False # TODO: Change to true and set up email configuration
   email_recipients: "example@example.com"
 
 briefing:

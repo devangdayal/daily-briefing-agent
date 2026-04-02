@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 import functools
 from groq import Groq
-
+import asyncio
 from .state import BriefingState, TopicResult
 from .tools import save_briefing, send_email, web_search
 
@@ -61,21 +61,17 @@ def _chat(prompt: str, max_tokens: int = 1024) -> str:
 # ── Node 1: Planner ───────────────────────────────────────────────────────────
 
 def planner_node(state: BriefingState) -> dict:
-    """
-    Reads config and initialises the run.
-
-    This node makes NO LLM call — it's pure logic.
-    Planning = decide what to do.
-    Executing = do it (search nodes).
-    Keeping them separate means you can test planning
-    without burning API calls.
-    """
     cfg    = state["config"]
     topics = cfg.get("topics", [])
     date   = datetime.now().strftime("%Y-%m-%d")
 
     print(f"\n[planner] Date: {date}")
     print(f"[planner] Topics: {[t['name'] for t in topics]}")
+
+    emit(state, "planner_done", {
+        "date":   date,
+        "topics": [t["name"] for t in topics]
+    })
 
     return {
         "topics": topics,
@@ -84,13 +80,9 @@ def planner_node(state: BriefingState) -> dict:
     }
 
 
+
 # ── Node 2: Search (one per topic, all run in parallel) ───────────────────────
 def make_search_node(topic: dict, delay: float = 0.0):
-    """
-    delay = seconds to wait before calling LLM.
-    First topic: 0s delay. Second topic: 15s delay.
-    Staggers the Groq calls to avoid hitting rate limit simultaneously.
-    """
     def search_node(state: BriefingState) -> dict:
         topic_name = topic["name"]
         queries    = topic["queries"]
@@ -100,6 +92,7 @@ def make_search_node(topic: dict, delay: float = 0.0):
             .get("max_articles_per_topic", 5)
         )
 
+        emit(state, "search_started", {"topic": topic_name})
         print(f"\n[search:{topic_name}] Running {len(queries)} queries...")
 
         all_results = []
@@ -107,9 +100,12 @@ def make_search_node(topic: dict, delay: float = 0.0):
             print(f"[search:{topic_name}] Query: '{query}'")
             hits = web_search(query, max_results=max_res)
             all_results.extend(hits)
-            print(f"[search:{topic_name}] Got {len(hits)} results")
+            emit(state, "search_query_done", {
+                "topic": topic_name,
+                "query": query,
+                "count": len(hits)
+            })
 
-        # Deduplicate by URL
         seen, unique = set(), []
         for r in all_results:
             if r["url"] not in seen and r["url"]:
@@ -118,18 +114,14 @@ def make_search_node(topic: dict, delay: float = 0.0):
 
         print(f"[search:{topic_name}] {len(unique)} unique articles")
 
-        # Format for LLM
         articles_text = "\n\n".join(
             f"Title: {r['title']}\nURL: {r['url']}\nSnippet: {r['body']}"
             for r in unique[:max_res]
         )
 
-        # Stagger LLM calls — wait before calling if delay set
-        if delay > 0:
-            print(f"[search:{topic_name}] Waiting {delay}s to stagger Groq calls...")
-            time.sleep(delay)
-
+        emit(state, "llm_started", {"topic": topic_name})
         print(f"[search:{topic_name}] Asking LLM to summarise...")
+
         summary = _chat(
             prompt=(
                 f"You are writing one section of a daily briefing.\n"
@@ -146,6 +138,12 @@ def make_search_node(topic: dict, delay: float = 0.0):
             ),
             max_tokens=600
         )
+
+        emit(state, "search_done", {
+            "topic":    topic_name,
+            "articles": len(unique),
+            "summary":  summary[:120] + "..."
+        })
 
         print(f"[search:{topic_name}] Summary complete")
 
@@ -164,14 +162,15 @@ def make_search_node(topic: dict, delay: float = 0.0):
     search_node.__name__ = f"search_{topic['name'].replace(' ', '_').lower()}"
     return search_node
 
+
 # ── Node 3: Synthesizer ───────────────────────────────────────────────────────
 @timed
 def synthesizer_node(state: BriefingState) -> dict:
-    """
-    Converts topic_results → markdown sections.
-    Returns sections as a list so operator.add appends correctly.
-    """
     print(f"\n[synthesizer] Building {len(state['topic_results'])} sections...")
+
+    emit(state, "synthesizer_started", {
+        "count": len(state["topic_results"])
+    })
 
     sections = []
     for r in state["topic_results"]:
@@ -179,10 +178,10 @@ def synthesizer_node(state: BriefingState) -> dict:
         sections.append(section)
         print(f"[synthesizer] ✓ {r['topic_name']}")
 
-    print(f"[synthesizer] {len(sections)} sections ready")
+    emit(state, "synthesizer_done", {"sections": len(sections)})
 
     return {
-        "sections": sections,                                  # ← list, operator.add appends it
+        "sections": sections,
         "events":   [f"[synthesizer] {len(sections)} sections assembled"]
     }
 
@@ -193,13 +192,10 @@ def writer_node(state: BriefingState) -> dict:
     tone          = cfg.get("briefing", {}).get("tone", "professional")
     sections_list = state.get("sections", [])
 
-    # Debug — print what we actually received
     print(f"\n[writer] Received {len(sections_list)} sections")
-    for i, s in enumerate(sections_list):
-        print(f"[writer] Section {i+1}: {s[:60]}...")
 
     if not sections_list:
-        print("[writer] ERROR — no sections")
+        emit(state, "writer_error", {"message": "No sections received"})
         return {
             "final_briefing": "# Error\n\nNo sections generated.",
             "events": ["[writer] ERROR — no sections"]
@@ -207,7 +203,9 @@ def writer_node(state: BriefingState) -> dict:
 
     sections = "\n\n---\n\n".join(sections_list)
 
+    emit(state, "writer_started", {})
     print("[writer] Generating executive summary...")
+
     exec_summary = _chat(
         prompt=(
             f"Write a 2-sentence executive summary of this daily briefing.\n"
@@ -236,14 +234,35 @@ def writer_node(state: BriefingState) -> dict:
         path = save_briefing(final, output.get("file_dir", "./daily_briefings"))
         print(f"[writer] Saved → {path}")
         events.append(f"[writer] Saved → {path}")
+        emit(state, "writer_saved", {"path": path})
 
     if output.get("send_email", False):
         res = send_email(f"Daily Briefing — {state['date']}", final)
         events.append(f"[writer] Email → {res}")
 
+    emit(state, "writer_done", {"preview": final[:200]})
     print("[writer] All done!")
 
     return {
         "final_briefing": final,
         "events":         events
-    }
+    } 
+
+def emit(state: BriefingState, event: str, data: dict):
+    """
+    Push a live event to the SSE queue if one exists.
+    If running from CLI (no queue), this is a no-op.
+    
+    This is the bridge between synchronous LangGraph nodes
+    and the async FastAPI SSE stream.
+    """
+    queue = state.get("live_queue")
+    if queue is None:
+        return   # CLI mode — just print, don't emit
+
+    # asyncio.Queue is async but we're in a sync node.
+    # put_nowait() is the sync version — never blocks.
+    try:
+        queue.put_nowait(("event", event, data))
+    except Exception:
+        pass     # queue full or closed — never crash a node over this
