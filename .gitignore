@@ -1,9 +1,24 @@
+# Environment
 .env
-venv/
+.env.*
+
+# Python
 __pycache__/
 *.pyc
-.pytest_cache/
-briefings/
-.ruff_cache/
+*.pyo
+.venv/
+venv/
+.vscode/
 
-*.json
+# Cache
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Output (generated files — not source code)
+daily_briefings/
+briefings/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -3,25 +3,28 @@ name = "daily-briefing-agent"
 version = "0.1.0"
 description = "Daily Briefing AI Agent"
 authors = [
-    {name = "Devang Dapoyal",email = "devangdayal@gmail.com"}
+    {name = "Devang Dayal",email = "devangdayal@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
+
 dependencies = [
     "groq (>=1.1.2,<2.0.0)",
     "langgraph (>=1.1.4,<2.0.0)",
     "langchain-core (>=1.2.23,<2.0.0)",
     "fastapi (>=0.135.3,<0.136.0)",
-    "duckduckgo-search (>=8.1.1,<9.0.0)",
     "python-dotenv (>=1.2.2,<2.0.0)",
     "pyyaml (>=6.0.3,<7.0.0)",
     "aiofiles (>=25.1.0,<26.0.0)",
     "langfuse (>=4.0.5,<5.0.0)",
-    "uvicorn[standard] (>=0.42.0,<0.43.0)"
+    "uvicorn[standard] (>=0.42.0,<0.43.0)",
+    "ddgs (>=9.12.0,<10.0.0)",
 ]
+[tool.poetry]
+package-mode = false
 
 [tool.poetry.scripts]
-briefing = "run:main"
+briefing = "app.py"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

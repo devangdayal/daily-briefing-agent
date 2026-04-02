@@ -1,0 +1,28 @@
+topics:
+  - name: "Tech News"
+    description: "Research the latest developments in technology, including AI, software, hardware, and industry trends."
+    queries:
+      - "What are the latest breakthroughs in artificial intelligence?"
+      - "What are the most popular programming languages in 2026 year?"
+      - "What are the recent trends in hardware development?"
+      - "What are the major tech companies doing in terms of innovation?"
+      - "Which company is hiring SDE personnel?"
+      - "What are the recent acquisitions in the tech industry?"
+
+  - name: "Latest AI learning trends 2026"
+    description: "Focus on personal development and learning new skills."
+    queries:
+      - "LangGraph tutorials 2026"
+      - "agentic AI best practices"
+      - "What are the best resources for learning about agentic AI?"
+      - "What are the most effective learning strategies for mastering Data Structure & Algorithms?"
+
+output:
+  save_to_file: true
+  file_dir: "./daily_briefings"
+  send_email: false # TODO: Change to true and set up email configuration
+  email_recipients: "example@example.com"
+
+briefing:
+  tone: "Professional and concise, suitable for a daily briefing email."
+  max_articles_per_topic: 5
