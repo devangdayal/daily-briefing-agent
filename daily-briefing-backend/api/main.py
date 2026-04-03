@@ -1,8 +1,10 @@
+# api/main.py
 import asyncio
 import json
+import queue
 import uuid
 from datetime import datetime
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -12,56 +14,52 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from agent.graph import build_graph
+from agent.graph import build_graph_from_config
 from agent.state import default_state
 
 app = FastAPI(title="Daily Briefing Agent API")
 
-# Allow React dev server to call this API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# In-memory run history — keyed by run_id
-# In production you'd use Redis or a DB
 run_history: dict[str, dict] = {}
 
 
-# ── Request / Response models ─────────────────────────────────────────────────
+# ── Request models ─────────────────────────────────────────────────────────────
+
+class TopicConfig(BaseModel):
+    name:        str
+    queries:     list[str]
+    description: Optional[str] = ""
+
+class BriefingConfig(BaseModel):
+    tone:                    str = "professional"
+    max_articles_per_topic:  int = 5
+
+class OutputConfig(BaseModel):
+    save_to_file: bool = True
+    file_dir:     str  = "./daily_briefings"
+    send_email:   bool = False
+    email_to:     str  = ""
 
 class RunRequest(BaseModel):
-    config_path: str = "config.yaml"   # allow overriding config per request
+    topics:   list[TopicConfig]
+    briefing: BriefingConfig  = BriefingConfig()
+    output:   OutputConfig    = OutputConfig()
 
 
-class RunSummary(BaseModel):
-    run_id:    str
-    date:      str
-    status:    str
-    topics:    list[str]
-    file_path: str | None
-
-
-# ── SSE helpers ───────────────────────────────────────────────────────────────
+# ── SSE helper ─────────────────────────────────────────────────────────────────
 
 def sse_event(event: str, data: dict) -> str:
-    """
-    Format a single SSE message.
-    
-    SSE wire format:
-        event: search_done
-        data: {"topic": "Tech News", "articles": 5}
-        
-        (blank line terminates the event)
-    
-    The browser's EventSource API parses this automatically.
-    """
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+# ── Routes ─────────────────────────────────────────────────────────────────────
 
 @app.get("/health")
 def health():
@@ -70,13 +68,11 @@ def health():
 
 @app.get("/runs")
 def list_runs():
-    """Return all past run summaries — for the history sidebar."""
     return list(run_history.values())
 
 
 @app.get("/runs/{run_id}")
 def get_run(run_id: str):
-    """Return a specific run including the full briefing text."""
     if run_id not in run_history:
         return {"error": "Run not found"}
     return run_history[run_id]
@@ -85,10 +81,16 @@ def get_run(run_id: str):
 @app.post("/run/stream")
 async def run_stream(req: RunRequest):
     run_id = str(uuid.uuid4())[:8]
-    queue: asyncio.Queue = asyncio.Queue()
+    q: queue.Queue = queue.Queue()
+
+    # Build config dict from request — same shape as config.yaml
+    cfg = {
+        "topics":   [t.model_dump() for t in req.topics],
+        "briefing": req.briefing.model_dump(),
+        "output":   req.output.model_dump(),
+    }
 
     async def event_stream() -> AsyncGenerator[str, None]:
-
         yield sse_event("run_started", {
             "run_id": run_id,
             "time":   datetime.now().isoformat()
@@ -96,26 +98,23 @@ async def run_stream(req: RunRequest):
 
         loop = asyncio.get_event_loop()
 
-        async def run_agent():
+        def run_agent_sync():
             try:
-                graph, cfg = await loop.run_in_executor(
-                    None, lambda: build_graph(req.config_path)
-                )
-                state  = default_state(cfg, live_queue=queue)
-                result = await loop.run_in_executor(
-                    None, lambda: graph.invoke(state)
-                )
-                await queue.put(("done", result))
+                graph       = build_graph_from_config(cfg)
+                state       = default_state(cfg, live_queue=q)
+                result      = graph.invoke(state)
+                q.put(("done", result))
             except Exception as e:
-                await queue.put(("error", str(e)))
+                q.put(("error", str(e)))
 
-        asyncio.create_task(run_agent())
+        loop.run_in_executor(None, run_agent_sync)
 
-        # Drain the queue — emit everything as it arrives
         while True:
             try:
-                item = await asyncio.wait_for(queue.get(), timeout=60.0)
-            except asyncio.TimeoutError:
+                item = await loop.run_in_executor(
+                    None, lambda: q.get(timeout=120)
+                )
+            except queue.Empty:
                 yield sse_event("run_error", {"message": "Agent timed out"})
                 break
 
@@ -144,8 +143,8 @@ async def run_stream(req: RunRequest):
                 }
 
                 yield sse_event("run_completed", {
-                    "run_id":  run_id,
-                    "topics":  topics,
+                    "run_id":   run_id,
+                    "topics":   topics,
                     "briefing": result.get("final_briefing", "")
                 })
                 break
@@ -154,7 +153,7 @@ async def run_stream(req: RunRequest):
         event_stream(),
         media_type="text/event-stream",
         headers={
-            "Cache-Control":    "no-cache",
+            "Cache-Control":     "no-cache",
             "X-Accel-Buffering": "no",
         }
     )

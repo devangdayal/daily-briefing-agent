@@ -20,3 +20,33 @@ export type AgentEvent =
   | { type: "heartbeat"; run_id: string };
 
 export type RunStatus = "idle" | "running" | "completed" | "error";
+
+export interface TopicConfig {
+  name: string;
+  queries: string[];
+  description: string;
+}
+
+export interface BriefingConfig {
+  tone: string;
+  max_articles_per_topic: number;
+}
+
+export interface RunConfig {
+  topics: TopicConfig[];
+  briefing: BriefingConfig;
+}
+
+export const DEFAULT_CONFIG: RunConfig = {
+  topics: [
+    {
+      name: "Tech News",
+      description: "Latest in technology and AI",
+      queries: ["latest AI breakthroughs 2026", "tech industry news this week"],
+    },
+  ],
+  briefing: {
+    tone: "professional",
+    max_articles_per_topic: 5,
+  },
+};

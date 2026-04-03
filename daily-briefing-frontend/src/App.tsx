@@ -1,9 +1,14 @@
+import { useState } from "react";
 import { useAgentStream } from "./hooks/useAgentStream";
+import { ConfigPanel } from "./components/ConfigPanel";
 import { EventFeed } from "./components/EventFeed";
 import { BriefingView } from "./components/BriefingView";
 import { StatusBadge } from "./components/StatusBadge";
+import { DEFAULT_CONFIG } from "./utils/types";
+import type { RunConfig } from "./utils/types";
 
 export default function App() {
+  const [config, setConfig] = useState<RunConfig>(DEFAULT_CONFIG);
   const { status, events, briefing, runId, startRun, cancelRun } =
     useAgentStream();
 
@@ -13,11 +18,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f8f8f6]">
-      <div className="w-full max-w-3/4 mx-auto px-5 py-12">
+      <div className="max-w-2xl mx-auto px-5 py-12">
         {/* Header */}
-        <div className="mb-10">
+        <div className="mb-8">
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-6 h-6 rounded-md bg-gray-900 flex items-center justify-center">
+            <div className="w-6 h-6 rounded-md bg-gray-900 flex items-center justify-center shrink-0">
               <span className="text-white text-xs font-bold">B</span>
             </div>
             <h1 className="text-lg font-semibold text-gray-900">
@@ -29,10 +34,17 @@ export default function App() {
           </p>
         </div>
 
+        {/* Config panel */}
+        <ConfigPanel
+          config={config}
+          onChange={setConfig}
+          disabled={isRunning}
+        />
+
         {/* Action bar */}
         <div className="flex items-center gap-3 mb-8">
           <button
-            onClick={isRunning ? cancelRun : startRun}
+            onClick={isRunning ? cancelRun : () => startRun(config)}
             className={`
               px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-95
               ${
@@ -47,7 +59,7 @@ export default function App() {
 
           {isCompleted && (
             <button
-              onClick={startRun}
+              onClick={() => startRun(config)}
               className="px-4 py-2 rounded-lg text-sm font-medium bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all active:scale-95"
             >
               Run again
@@ -57,23 +69,26 @@ export default function App() {
           <StatusBadge status={status} runId={runId} />
         </div>
 
-        {/* Stats strip — shown when running or complete */}
+        {/* Stats strip */}
         {(isRunning || isCompleted) && events.length > 0 && (
-          <div className="flex gap-4 mb-6">
+          <div className="flex gap-3 mb-6">
             {[
               {
                 label: "Topics",
-                value: events.find((e) => e.type === "planner_done")
-                  ? (events.find((e) => e.type === "planner_done") as any)
-                      .topics.length
-                  : "—",
+                value: (() => {
+                  const e = events.find((e) => e.type === "planner_done");
+                  return e && e.type === "planner_done" ? e.topics.length : "—";
+                })(),
               },
               {
                 label: "Articles",
                 value:
                   events
                     .filter((e) => e.type === "search_done")
-                    .reduce((sum, e: any) => sum + e.articles, 0) || "—",
+                    .reduce(
+                      (s, e) => s + (e.type === "search_done" ? e.articles : 0),
+                      0,
+                    ) || "—",
               },
               {
                 label: "Steps",
@@ -82,7 +97,7 @@ export default function App() {
             ].map(({ label, value }) => (
               <div
                 key={label}
-                className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex-1"
+                className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex-1 text-center"
               >
                 <p className="text-xs text-gray-400 mb-0.5">{label}</p>
                 <p className="text-xl font-semibold text-gray-900">{value}</p>
@@ -91,17 +106,10 @@ export default function App() {
           </div>
         )}
 
-        {/* Event feed */}
-        {events.length > 0 && (
-          <div className="mb-2">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
-              Agent steps
-            </p>
-            <EventFeed events={events} />
-          </div>
-        )}
+        {/* Event feed — toggleable */}
+        <EventFeed events={events} isRunning={isRunning} />
 
-        {/* Briefing */}
+        {/* Briefing output */}
         {isCompleted && <BriefingView briefing={briefing} />}
 
         {/* Error */}
@@ -112,14 +120,10 @@ export default function App() {
         )}
 
         {/* Empty state */}
-        {status === "idle" && (
-          <div className="mt-16 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-gray-100 mx-auto mb-4 flex items-center justify-center">
-              <span className="text-2xl">📰</span>
-            </div>
-            <p className="text-sm text-gray-400 max-w-xs mx-auto">
-              Click generate to research your configured topics and produce a
-              clean briefing
+        {status === "idle" && events.length === 0 && (
+          <div className="mt-12 text-center">
+            <p className="text-sm text-gray-400">
+              Configure your topics above, then click generate
             </p>
           </div>
         )}
