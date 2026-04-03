@@ -91,6 +91,9 @@ export default function App() {
           </div>
         )}
 
+        {/* Briefing */}
+        {isCompleted && <BriefingView briefing={briefing} />}
+        
         {/* Event feed */}
         {events.length > 0 && (
           <div className="mb-2">
@@ -100,9 +103,6 @@ export default function App() {
             <EventFeed events={events} />
           </div>
         )}
-
-        {/* Briefing */}
-        {isCompleted && <BriefingView briefing={briefing} />}
 
         {/* Error */}
         {isError && (
