@@ -138,7 +138,7 @@ async def run_stream(req: RunRequest):
                     "date":           result.get("date", ""),
                     "status":         "completed",
                     "topics":         topics,
-                    "final_briefing": result.get("final_briefing", ""),
+                    # "final_briefing": result.get("final_briefing", ""),
                     "events":         result.get("events", []),
                     "completed_at":   datetime.now().isoformat()
                 }
