@@ -1,4 +1,4 @@
-from typing import TypedDict, Annotated
+from typing import TypedDict, Annotated, Any
 import operator
 
 
@@ -28,9 +28,9 @@ class BriefingState(TypedDict):
     
     final_briefing : str    
     events : Annotated[list[str],operator.add]
+    live_queue: Any
     
-    
-def default_state(config:dict) -> BriefingState:
+def default_state(config:dict, live_queue:Any) -> BriefingState:
     """
     Initializes the state with default values.
     """
@@ -41,7 +41,8 @@ def default_state(config:dict) -> BriefingState:
         topic_results = [],
         sections = [],
         final_briefing = "",
-        events = []
+        events = [],
+        live_queue=live_queue 
     ) 
     
     

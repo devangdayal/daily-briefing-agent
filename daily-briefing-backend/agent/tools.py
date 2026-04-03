@@ -44,7 +44,7 @@ def web_search(query: str, max_results: int = 5) -> list[dict]:
 def save_briefing(content: str, output_dir: str = "./briefings") -> str:
     
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    date_str = datetime.now().strftime("%Y-%m-%d")
+    date_str = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
     file_path = f"{output_dir}/briefing_{date_str}.md"
     
     with open(file_path, 'w', encoding="utf-8") as f:

@@ -50,18 +50,20 @@ Each node is a pure Python function. State flows through a typed `BriefingState`
 ## Project structure
 
 ```
-daily-briefing-agent/
-├── agent/
-│   ├── __init__.py
-│   ├── state.py        # BriefingState — shared data schema
-│   ├── tools.py        # web_search, save_briefing, send_email
-│   ├── nodes.py        # planner, search, synthesizer, writer
-│   └── graph.py        # LangGraph pipeline wiring
-├── daily_briefings/    # generated .md files land here (git-ignored)
-├── app.py              # CLI entrypoint
-├── config.yaml         # edit this — topics, output, tone
-├── pyproject.toml
-└── .env
+daily-briefing-agent/          ← git root
+├── README.md
+├── LICENSE
+├── .gitignore
+├── daily-briefing-backend/    ← Python + Poetry
+│   ├── pyproject.toml
+│   ├── .venv/
+│   ├── agent/
+│   ├── api/
+│   ├── app.py
+│   └── config.yaml
+└── daily-briefing-frontend/   ← Vite + React
+    ├── package.json
+    └── src/
 ```
 
 ---
