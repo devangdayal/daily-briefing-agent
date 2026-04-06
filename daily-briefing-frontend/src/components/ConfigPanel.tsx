@@ -268,7 +268,7 @@ export function ConfigPanel({ config, onChange, disabled }: Props) {
             )}
             {config.output.send_email && !config.output.email_to && (
               <p className="text-xs text-amber-600">
-                Add GMAIL_USER + GMAIL_APP_PASSWORD to your .env to enable email
+                
               </p>
             )}
           </div>
