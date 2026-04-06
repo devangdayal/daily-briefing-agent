@@ -15,9 +15,9 @@ Built with **LangGraph + Groq (llama-3.3-70b) + DuckDuckGo Search**. Zero cloud 
 
 ## Essentials Enhancements (Soon)
 
-- [ ] Integrate the send Email True/False Config Flag
+- [ ] Email Template - Add dynamic intuitive email to be sent to the recipient
+- [ ] Email Recipients List - Add the list of default email lists & save history.
 - [ ] Langfuse observability — trace every run, token cost, latency
-- [ ] Cron scheduler UI — configure run times without editing crontab
 - [ ] Multiple output formats — PDF, Notion, Slack
 
 ## How it works

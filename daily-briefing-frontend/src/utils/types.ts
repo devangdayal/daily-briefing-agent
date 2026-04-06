@@ -32,10 +32,39 @@ export interface BriefingConfig {
   max_articles_per_topic: number;
 }
 
+export interface OutputConfig {
+  save_to_file: boolean;
+  file_dir: string;
+  send_email: boolean;
+  email_to: string;
+}
+
+export interface ScheduleConfig {
+  enabled: boolean;
+  hour: number;
+  minute: number;
+  days_of_week: string;
+  timezone: string;
+  job_name: string;
+}
+
 export interface RunConfig {
   topics: TopicConfig[];
   briefing: BriefingConfig;
+  output: OutputConfig;
+  schedule: ScheduleConfig;
 }
+
+export const TIMEZONES = [
+  "Asia/Kolkata",
+  "America/New_York",
+  "America/Los_Angeles",
+  "Europe/London",
+  "Europe/Berlin",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+  "UTC",
+];
 
 export const DEFAULT_CONFIG: RunConfig = {
   topics: [
@@ -48,5 +77,19 @@ export const DEFAULT_CONFIG: RunConfig = {
   briefing: {
     tone: "professional",
     max_articles_per_topic: 5,
+  },
+  output: {
+    save_to_file: true,
+    file_dir: "./daily_briefings",
+    send_email: false,
+    email_to: "",
+  },
+  schedule: {
+    enabled: false,
+    hour: 7,
+    minute: 30,
+    days_of_week: "mon,tue,wed,thu,fri",
+    timezone: "Asia/Kolkata",
+    job_name: "Daily Briefing",
   },
 };
