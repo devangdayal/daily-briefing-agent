@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./daily-briefing-backend
+      dockerfile: Dockerfile
+    container_name: briefing-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./daily-briefing-backend/.env
+    volumes:
+      - ./daily-briefing-backend/daily_briefings:/app/daily_briefings
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./daily-briefing-frontend
+      dockerfile: Dockerfile
+    container_name: briefing-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
