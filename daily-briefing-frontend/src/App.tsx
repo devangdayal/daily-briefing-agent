@@ -1,20 +1,44 @@
 import { useState } from "react";
 import { useAgentStream } from "./hooks/useAgentStream";
+import { useJobs } from "./hooks/useJobs";
 import { ConfigPanel } from "./components/ConfigPanel";
 import { EventFeed } from "./components/EventFeed";
 import { BriefingView } from "./components/BriefingView";
 import { StatusBadge } from "./components/StatusBadge";
 import { DEFAULT_CONFIG } from "./utils/types";
 import type { RunConfig } from "./utils/types";
+import { JobsPanel } from "./components/JobPanel";
 
 export default function App() {
   const [config, setConfig] = useState<RunConfig>(DEFAULT_CONFIG);
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduleMsg, setScheduleMsg] = useState("");
+
   const { status, events, briefing, runId, startRun, cancelRun } =
     useAgentStream();
+  const { jobs, createJob, deleteJob, runNow, fetchJobs } = useJobs();
 
   const isRunning = status === "running";
   const isCompleted = status === "completed";
   const isError = status === "error";
+
+  const handleSchedule = async () => {
+    if (!config.schedule.enabled) return;
+    setScheduling(true);
+    try {
+      const result = await createJob(config);
+      setScheduleMsg(
+        `Scheduled! Next run: ${
+          result.next_run
+            ? new Date(result.next_run).toLocaleString()
+            : "pending"
+        }`,
+      );
+      setTimeout(() => setScheduleMsg(""), 4000);
+    } finally {
+      setScheduling(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f8f8f6]">
@@ -34,6 +58,14 @@ export default function App() {
           </p>
         </div>
 
+        {/* Scheduled jobs */}
+        <JobsPanel
+          jobs={jobs}
+          onDelete={deleteJob}
+          onRunNow={runNow}
+          onRefresh={fetchJobs}
+        />
+
         {/* Config panel */}
         <ConfigPanel
           config={config}
@@ -42,17 +74,14 @@ export default function App() {
         />
 
         {/* Action bar */}
-        <div className="flex items-center gap-3 mb-8">
+        <div className="flex items-center gap-3 mb-8 flex-wrap">
           <button
             onClick={isRunning ? cancelRun : () => startRun(config)}
-            className={`
-              px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-95
-              ${
-                isRunning
-                  ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
-                  : "bg-gray-900 text-white hover:bg-gray-800 border border-gray-900"
-              }
-            `}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-95 ${
+              isRunning
+                ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
+                : "bg-gray-900 text-white hover:bg-gray-800 border border-gray-900"
+            }`}
           >
             {isRunning ? "Cancel" : "Generate briefing"}
           </button>
@@ -66,7 +95,22 @@ export default function App() {
             </button>
           )}
 
+          {/* Schedule button — only shown when schedule is enabled in config */}
+          {config.schedule.enabled && (
+            <button
+              onClick={handleSchedule}
+              disabled={scheduling || isRunning}
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 border border-emerald-600 transition-all active:scale-95 disabled:opacity-50"
+            >
+              {scheduling ? "Scheduling..." : "Save schedule"}
+            </button>
+          )}
+
           <StatusBadge status={status} runId={runId} />
+
+          {scheduleMsg && (
+            <span className="text-xs text-emerald-600">{scheduleMsg}</span>
+          )}
         </div>
 
         {/* Stats strip */}
@@ -106,10 +150,10 @@ export default function App() {
           </div>
         )}
 
-        {/* Event feed — toggleable */}
+        {/* Event feed */}
         <EventFeed events={events} isRunning={isRunning} />
 
-        {/* Briefing output */}
+        {/* Briefing */}
         {isCompleted && <BriefingView briefing={briefing} />}
 
         {/* Error */}
@@ -120,7 +164,7 @@ export default function App() {
         )}
 
         {/* Empty state */}
-        {status === "idle" && events.length === 0 && (
+        {status === "idle" && events.length === 0 && jobs.length === 0 && (
           <div className="mt-12 text-center">
             <p className="text-sm text-gray-400">
               Configure your topics above, then click generate
