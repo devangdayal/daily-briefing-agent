@@ -13,6 +13,13 @@ Built with **LangGraph + Groq (llama-3.3-70b) + DuckDuckGo Search**. Zero cloud 
 
 ![Final Briefing Generated](https://github.com/devangdayal/daily-briefing-agent/blob/623b0e2e66f594c38bbf6a4b17f5b68c08dfbcda/demo-screenshot/3-%20Final%20Brief%20Generated.png)
 
+## Essentials Enhancements (Soon)
+
+- [ ] Integrate the send Email True/False Config Flag
+- [ ] Langfuse observability — trace every run, token cost, latency
+- [ ] Cron scheduler UI — configure run times without editing crontab
+- [ ] Multiple output formats — PDF, Notion, Slack
+
 ## How it works
 
 ```
@@ -193,16 +200,6 @@ crontab -e
 | `GMAIL_USER` | No | Gmail address for email delivery |
 | `GMAIL_APP_PASSWORD` | No | Gmail app password (not your login password) |
 | `GMAIL_TO` | No | Recipient email (defaults to `GMAIL_USER`) |
-
----
-
-## Roadmap
-
-- [ ] FastAPI streaming backend — watch the agent run live
-- [ ] React frontend — browser UI with step-by-step progress
-- [ ] Langfuse observability — trace every run, token cost, latency
-- [ ] Cron scheduler UI — configure run times without editing crontab
-- [ ] Multiple output formats — PDF, Notion, Slack
 
 ---
 
