@@ -7,11 +7,11 @@ Built with **LangGraph + Groq (llama-3.3-70b) + DuckDuckGo Search**. Zero cloud 
 ---
 ## Demo Screenshot
 
-![Start Up Screen](https://github.com/devangdayal/daily-briefing-agent/blob/623b0e2e66f594c38bbf6a4b17f5b68c08dfbcda/demo-screenshot/1-%20Startup%20Screen.png)
+![Start Up Screen](https://github.com/devangdayal/daily-briefing-agent/blob/c09386e5cf849c02280bef595770370bc32d222f/demo-screenshot/1-%20Startup%20Screen.png)
 
-![Step Action](https://github.com/devangdayal/daily-briefing-agent/blob/623b0e2e66f594c38bbf6a4b17f5b68c08dfbcda/demo-screenshot/2-%20Steps%20Action.png)
+![Job Scheduled - Step Action](https://github.com/devangdayal/daily-briefing-agent/blob/c09386e5cf849c02280bef595770370bc32d222f/demo-screenshot/2-%20Scheduled%20Jobs.png)
 
-![Final Briefing Generated](https://github.com/devangdayal/daily-briefing-agent/blob/623b0e2e66f594c38bbf6a4b17f5b68c08dfbcda/demo-screenshot/3-%20Final%20Brief%20Generated.png)
+![Final Briefing Generated](https://github.com/devangdayal/daily-briefing-agent/blob/c09386e5cf849c02280bef595770370bc32d222f/demo-screenshot/3-%20Final%20Briefs.png)
 
 ## Essentials Enhancements (Soon)
 
